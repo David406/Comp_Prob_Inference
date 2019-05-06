@@ -90,12 +90,15 @@ def forward_backward(observations):
         
     for t in reversed(range(num_time_steps-1)):
         backward_messages[t] = robot.Distribution()
-        for previous_state in all_possible_hidden_states:
-            for state, p in backward_messages[t+1].items():
-                observation = observations[t+1]
-                p_observation = observation_model(state)[observation]
-                p_previous_state = backward_transition_model[state][previous_state]
+        for state, p in backward_messages[t+1].items():
+            possible_previous_states = backward_transition_model[state]
+            observation = observations[t+1]
+            p_observation = observation_model(state)[observation]
+            for previous_state, p_previous_state in possible_previous_states.items():
                 backward_messages[t][previous_state] += p * p_observation * p_previous_state
+        backward_messages[t].renormalize()
+        
+    pdb.set_trace()
 
     marginals = [None] * num_time_steps # remove this
     # TODO: Compute the marginals
