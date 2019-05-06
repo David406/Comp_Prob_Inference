@@ -85,7 +85,9 @@ def forward_backward(observations):
             backward_transition_model[next_state][state] += p
     
     backward_messages[-1] = robot.Distribution()
-    {backward_messages[-1][state]: 1 for state in all_possible_hidden_states}
+    for state in all_possible_hidden_states:
+        backward_messages[-1][state] = 1;
+        
     for t in reversed(range(num_time_steps-1)):
         backward_messages[t] = robot.Distribution()
         for previous_state in all_possible_hidden_states:
