@@ -59,8 +59,6 @@ def forward_backward(observations):
     # YOUR CODE GOES HERE
     #
 
-    import pdb
-    pdb.set_trace()
     num_time_steps = len(observations)
     forward_messages = [None] * num_time_steps
     forward_messages[0] = prior_distribution
@@ -68,12 +66,13 @@ def forward_backward(observations):
     for t in range(1, num_time_steps):
         forward_messages[t] = robot.Distribution()
         for state, p in forward_messages[t-1].items():
-            observation_t = observations[t]
-            p_observation_t = observation_model(state)[observation_t]
-            transitions_to_next_states = transition_model(state)
-            for next_state, p_next_state in transitions_to_next_states.items():
-                forward_messages[t][next_state] += p * p_observation_t * p_next_state
+            observation = observations[t-1]
+            p_observation = observation_model(state)[observation]
+            for next_state, p_next_state in transition_model(state).items():
+                forward_messages[t][next_state] += p * p_observation * p_next_state
+        forward_messages[t].renormalize()
     
+    import pdb
     pdb.set_trace()
 
     backward_messages = [None] * num_time_steps
