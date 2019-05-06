@@ -67,18 +67,18 @@ def forward_backward(observations):
         forward_messages[t] = robot.Distribution()
         for state, p in forward_messages[t-1].items():
             observation = observations[t-1]
-            p_observation = observation_model(state)[observation]
+            if observation is not None:
+                p_observation = observation_model(state)[observation]
+            else:
+                p_observation = 1.0    # This means do not include observation
             for next_state, p_next_state in transition_model(state).items():
                 forward_messages[t][next_state] += p * p_observation * p_next_state
         forward_messages[t].renormalize()
     
-    import pdb
-    pdb.set_trace()
-
     backward_messages = [None] * num_time_steps
     # TODO: Compute the backward messages
     
-    # Computer backward transition model
+    # Compute backward transition model
     backward_transition_model = collections.defaultdict(robot.Distribution)
     for state in all_possible_hidden_states:
         for next_state, p in transition_model(state).items():
@@ -93,22 +93,27 @@ def forward_backward(observations):
         for state, p in backward_messages[t+1].items():
             possible_previous_states = backward_transition_model[state]
             observation = observations[t+1]
-            p_observation = observation_model(state)[observation]
+            if observation is not None:
+                p_observation = observation_model(state)[observation]
+            else:
+                p_observation = 1.0  # This means do not include observation
             for previous_state, p_previous_state in possible_previous_states.items():
                 backward_messages[t][previous_state] += p * p_observation * p_previous_state
         backward_messages[t].renormalize()
         
-    pdb.set_trace()
-
     marginals = [None] * num_time_steps # remove this
     # TODO: Compute the marginals
     for t in range(num_time_steps):
         marginals[t] = robot.Distribution()
         observation = observations[t]
         for state in all_possible_hidden_states:
-            p_observation = observation_model(state)[observation]
+            if observation is not None:
+                p_observation = observation_model(state)[observation]
+            else:
+                p_observation = 1.0
             marginals[t][state] = forward_messages[t][state] * backward_messages[t][state] * p_observation
-
+        marginals[t].renormalize()
+    
     return marginals
 
 
@@ -234,7 +239,7 @@ def main():
     marginals = forward_backward(observations)
     print("\n")
 
-    timestep = 2
+    timestep = 99
     print("Most likely parts of marginal at time %d:" % (timestep))
     if marginals[timestep] is not None:
         print(sorted(marginals[timestep].items(),
