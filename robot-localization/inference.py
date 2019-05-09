@@ -101,7 +101,7 @@ def forward_backward(observations):
                 backward_messages[t][previous_state] += p * p_observation * p_previous_state
         backward_messages[t].renormalize()
         
-    marginals = [None] * num_time_steps # remove this
+    marginals = [None] * num_time_steps 
     # TODO: Compute the marginals
     for t in range(num_time_steps):
         marginals[t] = robot.Distribution()
@@ -133,11 +133,42 @@ def Viterbi(observations):
     # -------------------------------------------------------------------------
     # YOUR CODE GOES HERE
     #
-
+    
 
     num_time_steps = len(observations)
     estimated_hidden_states = [None] * num_time_steps # remove this
-
+    
+    min_sum_messages = [prior_distribution]
+    for state, p in prior_distribution.items():
+        min_sum_messages[0][state] = (-careful_log(p), None)
+    
+    x_end = {}
+    for t in range(num_time_steps):
+        next_min_sum_message = {}
+        for state, (p, _) in min_sum_messages[t].items():
+            observation = observations[t]
+            if observation is not None:
+                p_observation = observation_model(state)[observation]
+            else:
+                p_observation = 1
+            if t != num_time_steps-1:
+                for next_state, p_next_state in transition_model(state).items():
+                    m = - careful_log(p_next_state) - careful_log(p_observation) + p
+                    if m < next_min_sum_message.setdefault(next_state, (np.inf, None))[0]:
+                        next_min_sum_message[next_state] = (m, state)
+            else:
+                m = -careful_log(p_observation) + p
+                if m < x_end.setdefault(state, np.inf):
+                    x_end[state] = m
+                    estimated_hidden_states[t] = state
+        if t != num_time_steps-1:
+            min_sum_messages.append(next_min_sum_message)
+            
+    # Backtrace to decide all hidden states
+    for t in reversed(range(1, num_time_steps)):
+        backward_coming_state = estimated_hidden_states[t]
+        estimated_hidden_states[t-1] = min_sum_messages[t][backward_coming_state][1]
+        
     return estimated_hidden_states
 
 
