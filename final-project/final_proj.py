@@ -1,6 +1,5 @@
 import copy
 import numpy as np
-import collections
 
 
 # DO NOT MODIFY THIS FUNCTION
@@ -202,7 +201,7 @@ def chow_liu(observations):
     #
     
     # Compute empirical mutual information for all possible node pairs
-    mutual_info_pairs = collections.defaultdict(lambda:0)
+    mutual_info_pairs = {}
     for j in range(num_vars):
         for i in range(j):
             mutual_info_pairs[(i,j)] = \
@@ -257,7 +256,7 @@ def compute_empirical_conditional_distribution(var1_values, var2_values):
     
     for x2 in var2_values:
         for x1 in var1_values:
-            conditional_distributions[x2] = joint_prob_x1_x2[x1, x2]/x2_prob[x2]
+            conditional_distributions[x2][x1] = joint_prob_x1_x2[x1, x2]/x2_prob[x2]
 
     #
     # END OF YOUR CODE
@@ -345,7 +344,28 @@ def learn_tree_parameters(observations, tree, root_node=0):
     # -------------------------------------------------------------------------
     # YOUR CODE HERE
     #
-
+    
+    # Compute empirical node potentials
+    for node in nodes:
+        node_potentials[node] = compute_empirical_distribution(observations[:,node])
+        
+    # Compute empirical edge potentials
+    fringe = [root_node]  # List of nodes queued up to be visited next
+    visited = {node: False for node in nodes}  # Track which nodes are visited
+    while len(fringe) > 0:
+        node = fringe.pop(0)  # Pops 0-th element of fring and returns it
+        visited[node] = True  # Mark 'node' as visited
+        for neighbor in edges[node]:
+            if not visited[neighbor]:
+                edge_potentials[(neighbor, node)] = \
+                compute_empirical_conditional_distribution(observations[:,neighbor], observations[:,node])
+                
+                fringe.append(neighbor)
+    
+    # Add transposed edge potentials
+    for (i,j) in edge_potentials.copy():
+        edge_potentials[(j,i)] = transpose_2d_table(edge_potentials[(i,j)])
+    
     #
     # END OF YOUR CODE
     # -------------------------------------------------------------------------
