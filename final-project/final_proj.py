@@ -417,6 +417,70 @@ def sum_product(nodes, edges, node_potentials, edge_potentials):
     # -------------------------------------------------------------------------
     # YOUR CODE HERE
     #
+    
+    def send_message(j, i, grand_children_of_i):
+        """
+        Send messages from node j to node i, i.e. summing over all xj
+        
+        Input
+        -----
+        j: Source node (to be summed over)
+        i: Destination node
+        grand_children_of_i: All neighboring nodes except node i (sources of messages).
+        """
+        messages[(j,i)] = {xi: 0 for xi in node_potentials[i]}
+        
+        incoming_messages = {xj: 1 for xj in node_potentials[j]}  # Default to be 1 for leaf nodes (no effect)
+        if len(grand_children_of_i) != 0:  # Only deal with this case because at leaf node, no messages to be collected
+            for xj in node_potentials[j]:
+                for grand_child in grand_children_of_i:
+                    incoming_messages[xj] *= messages[(grand_child, j)][xj]
+        for xj in node_potentials[j]:
+            for xi in node_potentials[i]:
+                messages[(j,i)][xi] += node_potentials[j][xj] * edge_potentials[(j,i)][xj][xi] * incoming_messages[xj]
+    
+    
+    def collect_messages(j, i):
+        """
+        Collect messages from node j to node i
+        """
+        j_neighbors_except_i = [k for k in edges[j] if k != i]
+        
+        for k in j_neighbors_except_i:   # No effect when j_neighbors_except_i is empty []
+            collect_messages(k, j)
+        send_message(j, i, j_neighbors_except_i)
+        
+    def distribute_messages(i, j):
+        """
+        Distribute messages from node i to node j
+        """
+        i_neighbors_except_j = [k for k in edges[i] if k != j]
+        j_neighbors_except_i = [k for k in edges[j] if k != i]
+        
+        send_message(i, j, i_neighbors_except_j)
+        for k in j_neighbors_except_i:
+            distribute_messages(j, k)
+            
+    def compute_marginal(i):
+        marginals[i] = node_potentials[i]
+        for x in marginals[i]:
+            for neighbor_node in edges[i]:
+                marginals[i][x] *= messages[(neighbor_node, i)][x]
+                
+        # Renormalize
+        normalization_const = np.array(list(marginals[i].values())).sum()
+        for x in marginals[i]:
+            marginals[i][x] /= normalization_const
+    
+    
+    root_node = list(nodes)[0]
+    for node in edges[root_node]:
+        collect_messages(node, root_node)
+    for node in edges[root_node]:
+        distribute_messages(root_node, node)
+    for node in nodes:
+        compute_marginal(node)
+    
 
     #
     # END OF YOUR CODE
@@ -523,6 +587,11 @@ def compute_marginals_given_observations(nodes, edges, node_potentials,
     # -------------------------------------------------------------------------
     # YOUR CODE HERE
     #
+    
+    new_node_potentials = node_potentials.copy()
+    for node, obs in observations.items():
+        new_dist = {obs: node_potentials[node][obs]}
+        new_node_potentials[node] = new_dist
 
     #
     # END OF YOUR CODE
